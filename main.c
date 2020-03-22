@@ -1,3 +1,6 @@
+// Use ATM example here for initial testing
+// https://en.wikipedia.org/wiki/Cucumber_(software)
+
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -8,11 +11,6 @@
 #define TESTA_TYPE_INT32_T 1
 #define TESTA_TYPE_UINT32_T 2
 
-// String for matching printf varargs style
-// Enables typed parsing of complex data, with warnings on mismatch
-//
-// Use ATM example here for initial testing
-// https://en.wikipedia.org/wiki/Cucumber_(software)
 
 /* TODO: add more types and string type */
 typedef int32_t (*testa_step_none_t)(void *userdata);
@@ -48,11 +46,6 @@ int32_t testa_ctx_register_steps(struct testa_context_t *ctx,
 				 struct testa_step_t *steps,
 				 uint32_t num_steps)
 {
-	/* TODO: register steps to context here */
-	(void)ctx;
-	(void)steps;
-	(void)num_steps;
-
 	for (uint32_t i = 0; i < num_steps; i++) {
 		if(num_steps >= 32) {
 			printf("hit max steps, make dynamic\n");
@@ -61,7 +54,6 @@ int32_t testa_ctx_register_steps(struct testa_context_t *ctx,
 
 		ctx->steps[ctx->num_steps] = &steps[i];
 		ctx->num_steps++;
-		//printf("ctx adds step %d:  \"%s\"\n", i, steps[i].find_string);
 	}
 
 	return 0;
