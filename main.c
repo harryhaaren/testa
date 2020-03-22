@@ -175,7 +175,12 @@ testa_scenario_run_from_file(struct testa_context_t *ctx,
 	while ((read = getline(&line, &len, file)) != -1) {
 		int32_t err = testa_ctx_execute_step(ctx, line, userdata);
 		if (err) {
-			printf("line %s returns err: %d\n", line, err);
+			if(err == -1) { /* not found */
+				printf("No handler found for this step, add callback code to handle it!\n  %s",
+				       line);
+			} else {
+				printf("line %s returns err: %d\n", line, err);
+			}
 		}
 		step_counter++;
 	}
