@@ -183,7 +183,7 @@ struct testa_scenario_t {
 
 int32_t
 testa_run_scenario(struct testa_context_t *ctx,
-		   struct testa_scenario_t *scn,
+		   const struct testa_scenario_t *scn,
 		   void *userdata)
 {
 	(void)ctx;
@@ -289,7 +289,7 @@ main(int argc, char **argv)
 	(void)argv;
 
 	struct testa_context_t ctx = {0};
-	struct testa_scenario_t scn = {
+	static const struct testa_scenario_t scn = {
 		.name = "Scenario Test 1",
 		.steps =
 "Given user has a valid card;\
