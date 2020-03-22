@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 /* TODO: make this type more explicity, remove string type */
+#define TESTA_TYPE_NONE_T 0
 #define TESTA_TYPE_INT32_T 1
 #define TESTA_TYPE_UINT32_T 2
 
@@ -14,7 +15,8 @@
 // https://en.wikipedia.org/wiki/Cucumber_(software)
 
 /* TODO: add more types and string type */
-typedef int32_t (*testa_step_int32_t )(int32_t  value, void *userdata);
+typedef int32_t (*testa_step_none_t)(void *userdata);
+typedef int32_t (*testa_step_int32_t)(int32_t  value, void *userdata);
 typedef int32_t (*testa_step_uint32_t)(uint32_t value, void *userdata);
 
 struct testa_step_t {
@@ -29,6 +31,7 @@ struct testa_step_t {
 
 	/* the function to call */
 	union {
+		testa_step_none_t cb_none_t;
 		testa_step_int32_t cb_int32_t;
 		testa_step_uint32_t cb_uint32_t;
 	};
@@ -58,7 +61,7 @@ int32_t testa_ctx_register_steps(struct testa_context_t *ctx,
 
 		ctx->steps[ctx->num_steps] = &steps[i];
 		ctx->num_steps++;
-		printf("ctx adds step %d:  \"%s\"\n", i, steps[i].find_string);
+		//printf("ctx adds step %d:  \"%s\"\n", i, steps[i].find_string);
 	}
 
 	return 0;
@@ -112,15 +115,15 @@ int32_t testa_ctx_execute_step(struct testa_context_t *ctx,
 	default: return -2; /* error in doubled finding */
 	}
 
-	/* find first < in string to get variable value */
-	char *first_gt_symbol = strstr(string, "<");
-
 	/* No variables handles early and return */
-	if (!first_gt_symbol &&
-	    !strcmp(ctx->steps[found_idx]->type, "none")) {
+	if (!strcmp(ctx->steps[found_idx]->type, "none")) {
 		ctx->steps[found_idx]->cb_uint32_t(0, userdata);
 		return 0;
-	} else if (!first_gt_symbol) {
+	}
+
+	/* find first < in string to get variable value */
+	char *first_gt_symbol = strstr(string, "<");
+	if (!first_gt_symbol) {
 		/* type is not "none", so this is an error */
 		printf("variable callback without <variable> in step\n");
 		return -1;
@@ -155,6 +158,7 @@ int32_t testa_ctx_execute_step(struct testa_context_t *ctx,
 		return 0;
 	}
 
+	printf("no valid handler for %s found, fail\n", string);
 	return -3;
 }
 
@@ -210,21 +214,14 @@ testa_run_scenario(struct testa_context_t *ctx,
 		token = strtok_r(NULL, ";", &save_ptr);
 	}
 
-	// strtok() the scenario.steps here
-	//   for each one find the right CB to call
-	//      if found call callback
-	//      else throw useful printy error
-
 	free(steps);
-
 	return 0;
 }
 
 
 int32_t
-atm_user_has_valid_card(uint32_t value, void *userdata)
+atm_user_has_valid_card(void *userdata)
 {
-	(void)value;
 	(void)userdata;
 	printf("in %s\n", __func__);
 	return 0;
@@ -235,27 +232,53 @@ atm_account_balance(int32_t value, void *userdata)
 {
 	(void)value;
 	(void)userdata;
-	printf("in %s, value %d\n", __func__, value);
+	printf(" - in %s, value %d\n", __func__, value);
 	return 0;
 }
 
 int32_t
-atm_todo_step(uint32_t value, void *userdata)
+atm_dispense_amount(uint32_t value, void *userdata)
 {
 	(void)value;
 	(void)userdata;
-	printf("in %s, none value\n", __func__);
+	printf(" - in %s, value %d\n", __func__, value);
+	return 0;
+}
+
+int32_t
+atm_resulting_balance(int32_t value, void *userdata)
+{
+	(void)value;
+	(void)userdata;
+	printf(" - in %s, value %d\n", __func__, value);
+	return 0;
+}
+
+int32_t
+atm_withdraw(uint32_t value, void *userdata)
+{
+	(void)value;
+	(void)userdata;
+	printf(" - in %s, value %d\n", __func__, value);
+	return 0;
+}
+
+int32_t
+atm_todo_step(void *userdata)
+{
+	(void)userdata;
+	printf(" - in %s, no value\n", __func__);
 	return 0;
 }
 
 /* Array of steps here */
 struct testa_step_t atm_steps[] = {
-	{ .find_string = "user has a valid",	.type = "none", .cb_uint32_t = atm_user_has_valid_card, },
+	{ .find_string = "user has a valid",	.type = "none", .cb_none_t = atm_user_has_valid_card, },
 	{ .find_string = "account balance",	.type = "int32_t",  .cb_int32_t = atm_account_balance, },
-	{ .find_string = "they insert the card",.type = "none", .cb_uint32_t = atm_todo_step, },
-	{ .find_string = "withdraw",		.type = "uint32_t", .cb_uint32_t = atm_todo_step, },
-	{ .find_string = "the ATM should",	.type = "none", .cb_uint32_t = atm_todo_step, },
-	{ .find_string = "the balance",		.type = "none", .cb_uint32_t = atm_todo_step, },
+	{ .find_string = "they insert the card",.type = "none", .cb_none_t = atm_todo_step, },
+	{ .find_string = "withdraw",		.type = "uint32_t", .cb_uint32_t = atm_withdraw, },
+	{ .find_string = "the ATM should",	.type = "uint32_t", .cb_uint32_t = atm_dispense_amount, },
+	{ .find_string = "the balance",		.type = "int32_t", .cb_int32_t = atm_resulting_balance, },
 };
 #define num_atm_steps (sizeof(atm_steps) / sizeof(atm_steps[0]))
 
@@ -272,9 +295,9 @@ main(int argc, char **argv)
 "Given user has a valid card;\
 And account balance is <50>;\
 When they insert the card;\
-And withdraw 20;\
-Then the ATM should return 20;\
-And the balance should be 30"
+And withdraw <20>;\
+Then the ATM should return <20>;\
+And the balance should be <30>"
 	};
 
 	int32_t err = testa_ctx_register_steps(&ctx, atm_steps, num_atm_steps);
