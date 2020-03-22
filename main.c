@@ -13,8 +13,8 @@
 
 
 /* TODO: add more types and string type */
-typedef int32_t (*testa_step_none_t)(const char *string, void *userdata);
-typedef int32_t (*testa_step_int32_t)(int32_t  value, void *userdata);
+typedef int32_t (*testa_step_none_t)(const char *str, void *userdata);
+typedef int32_t (*testa_step_int32_t)(const char *str,int32_t  value, void *userdata);
 typedef int32_t (*testa_step_uint32_t)(uint32_t value, void *userdata);
 
 struct testa_step_t {
@@ -157,7 +157,7 @@ int32_t testa_ctx_execute_step(struct testa_context_t *ctx,
 			printf("failed to parse %s\n", first_gt_symbol);
 			return -4;
 		}
-		ctx->steps[found_idx]->cb_int32_t(value, userdata);
+		ctx->steps[found_idx]->cb_int32_t(string, value, userdata);
 		return 0;
 	}
 
@@ -201,6 +201,12 @@ testa_scenario_run_from_file(struct testa_context_t *ctx,
 		       (int)strcspn(str, "\n"), str, __func__);		\
 	} while(0)
 
+#define TESTA_LOG_STEP_INT32(str,val)					\
+	do {								\
+		printf("    %.*s [%s(%d)]\n",				\
+		       (int)strcspn(str, "\n"), str, __func__, val);	\
+	} while(0)
+
 int32_t
 atm_user_has_valid_card(const char *str, void *userdata)
 {
@@ -210,11 +216,10 @@ atm_user_has_valid_card(const char *str, void *userdata)
 }
 
 int32_t
-atm_account_balance(int32_t value, void *userdata)
+atm_account_balance(const char *str, int32_t value, void *userdata)
 {
-	(void)value;
+	TESTA_LOG_STEP_INT32(str, value);
 	(void)userdata;
-	printf(" - in %s, value %d\n", __func__, value);
 	return 0;
 }
 
@@ -228,9 +233,9 @@ atm_dispense_amount(uint32_t value, void *userdata)
 }
 
 int32_t
-atm_resulting_balance(int32_t value, void *userdata)
+atm_resulting_balance(const char *str, int32_t value, void *userdata)
 {
-	(void)value;
+	TESTA_LOG_STEP_INT32(str, value);
 	(void)userdata;
 	printf(" - in %s, value %d\n", __func__, value);
 	return 0;
