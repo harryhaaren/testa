@@ -96,6 +96,17 @@ int32_t testa_ctx_execute_step(struct testa_context_t *ctx,
 	uint32_t found = 0;
 	uint32_t found_idx = 0;
 
+	if (!strncmp(string, "Feature", 7)) {
+		// Pretty print feature name?
+		printf("Feature:\n");
+		return 0;
+	}
+	if (!strncmp(string, "Scenario Outline", 16)) {
+		// Pretty print feature name?
+		printf("  Scenario Outline:\n");
+		return 0;
+	}
+
 	for (uint32_t i = 0; i < ctx->num_steps; i++) {
 		/* TODO: implement fuzzy search here? */
 		if (!strstr(string, ctx->steps[i]->find_string)) {
@@ -245,7 +256,7 @@ int32_t
 atm_user_has_valid_card(void *userdata)
 {
 	(void)userdata;
-	printf("in %s\n", __func__);
+	printf(" - in %s\n", __func__);
 	return 0;
 }
 
@@ -286,10 +297,10 @@ atm_withdraw(uint32_t value, void *userdata)
 }
 
 int32_t
-atm_todo_step(void *userdata)
+atm_insert_card(void *userdata)
 {
 	(void)userdata;
-	printf(" - in %s, no value\n", __func__);
+	printf(" - in %s\n", __func__);
 	return 0;
 }
 
@@ -297,7 +308,7 @@ atm_todo_step(void *userdata)
 struct testa_step_t atm_steps[] = {
 	{ .find_string = "user has a valid",	.type = "none", .cb_none_t = atm_user_has_valid_card, },
 	{ .find_string = "account balance",	.type = "int32_t",  .cb_int32_t = atm_account_balance, },
-	{ .find_string = "they insert the card",.type = "none", .cb_none_t = atm_todo_step, },
+	{ .find_string = "they insert the card",.type = "none", .cb_none_t = atm_insert_card, },
 	{ .find_string = "withdraw",		.type = "uint32_t", .cb_uint32_t = atm_withdraw, },
 	{ .find_string = "the ATM should",	.type = "uint32_t", .cb_uint32_t = atm_dispense_amount, },
 	{ .find_string = "the balance",		.type = "int32_t", .cb_int32_t = atm_resulting_balance, },
