@@ -186,10 +186,6 @@ testa_run_scenario(struct testa_context_t *ctx,
 		   const struct testa_scenario_t *scn,
 		   void *userdata)
 {
-	(void)ctx;
-	(void)userdata;
-	(void)scn;
-
 	if (!scn->steps) {
 		return -1;
 	}
@@ -202,19 +198,45 @@ testa_run_scenario(struct testa_context_t *ctx,
 	uint32_t step_counter = 0;
 
 	while (token) {
-		/* handle token here */
-		printf("step %d: %s\n", step_counter, token);
-
-		int32_t err = testa_ctx_execute_step(ctx, token, NULL);
+		int32_t err = testa_ctx_execute_step(ctx, token, userdata);
 		if (err) {
-			printf("token %s returns err: %d\n", token, err);
+			printf("line %s returns err: %d\n", token, err);
 		}
-
 		step_counter++;
 		token = strtok_r(NULL, ";", &save_ptr);
 	}
 
 	free(steps);
+	return 0;
+}
+
+int32_t
+testa_scenario_run_from_file(struct testa_context_t *ctx,
+			     const char *path,
+			     void *userdata)
+{
+	FILE *file = fopen(path, "r");
+	if (!file) {
+		printf("failed to load file %s\n", path);
+		return -1;
+	}
+
+	uint32_t step_counter = 0;
+
+	char *line = NULL;
+	size_t len = 0;
+	ssize_t read;
+
+	while ((read = getline(&line, &len, file)) != -1) {
+		int32_t err = testa_ctx_execute_step(ctx, line, userdata);
+		if (err) {
+			printf("line %s returns err: %d\n", line, err);
+		}
+		step_counter++;
+	}
+
+	free(line);
+	fclose(file);
 	return 0;
 }
 
@@ -308,6 +330,8 @@ And the balance should be <30>"
 
 	void *userdata = NULL;
 	err = testa_run_scenario(&ctx, &scn, userdata);
+
+	err = testa_scenario_run_from_file(&ctx, "atm_dispense.feature", userdata);
 
 	printf("running testa: %d\n", err);
 	return err;
