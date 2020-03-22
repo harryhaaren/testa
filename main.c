@@ -6,13 +6,39 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-/* TODO: make this type more explicity, remove string type */
+/* Various parts of the testa library require some type knowledge.
+ * These defines are the internal representations of the C types used
+ * by the various callbacks or parsing routines for the data provided
+ * in the .features file to convert them to C variables.
+ */
 #define TESTA_TYPE_NONE_T 0
 #define TESTA_TYPE_INT32_T 1
 #define TESTA_TYPE_UINT32_T 2
 
+/* Logging macros to pretty-print steps */
+#define TESTA_LOG_STEP_NONE(str)					\
+	do {								\
+		printf("    %.*s [%s()]\n",				\
+		       (int)strcspn(str, "\n"), str, __func__);		\
+	} while(0)
 
-/* TODO: add more types and string type */
+#define TESTA_LOG_STEP_INT32(str,val)					\
+	do {								\
+		printf("    %.*s [%s(%d)]\n",				\
+		       (int)strcspn(str, "\n"), str, __func__, val);	\
+	} while(0)
+
+#define TESTA_LOG_STEP_UINT32(str,val)					\
+	do {								\
+		printf("    %.*s [%s(%u)]\n",				\
+		       (int)strcspn(str, "\n"), str, __func__, val);	\
+	} while(0)
+
+/**
+ * Function prototypes to be implemented by the user of Testa.
+ * Each function recieves the string that caused the callback to be called,
+ * the value (if any) to test with, and a void pointer for userdata.
+ */
 typedef int32_t (*testa_step_none_t)(const char *str, void *userdata);
 typedef int32_t (*testa_step_int32_t)(const char *str,int32_t  value, void *userdata);
 typedef int32_t (*testa_step_uint32_t)(const char *str, uint32_t value, void *userdata);
@@ -20,19 +46,13 @@ typedef int32_t (*testa_step_uint32_t)(const char *str, uint32_t value, void *us
 struct testa_step_t {
 	/* Match against this string to find its impl callback */
 	char find_string[64];
-	/* c string for type to cast to and call, eg uint32_t */
-	char type[16];
 
-	// TODO: refactor this to use offsetof() and store the data
-	// into the *userdata local structure blindly? Could avoid
-	// boilerplate code
-
-	/* the function to call */
-	union {
-		testa_step_none_t cb_none_t;
-		testa_step_int32_t cb_int32_t;
-		testa_step_uint32_t cb_uint32_t;
-	};
+	/* Callback function prototypes. Only one must be set, and that
+	 * string provided will be parsed to give a variable of that type.
+	 */
+	testa_step_none_t cb_none_t;
+	testa_step_int32_t cb_int32_t;
+	testa_step_uint32_t cb_uint32_t;
 };
 
 /* Defines a test */
@@ -56,27 +76,6 @@ int32_t testa_ctx_register_steps(struct testa_context_t *ctx,
 		ctx->num_steps++;
 	}
 
-	return 0;
-}
-
-static inline int32_t
-testa_parse_var(const char *value_str, uint32_t testa_type, void *value)
-{
-	/* Autodetect */
-	int base = 0;
-
-	switch (testa_type) {
-	case TESTA_TYPE_INT32_T:
-		*(int32_t *)value = strtol(value_str, NULL, base);
-		break;
-	case TESTA_TYPE_UINT32_T:
-		*(uint32_t *)value = strtoul(value_str, NULL, base);
-		break;
-	default:
-		printf("warning: %s cannot parse value string %s\n",
-		       __func__, value_str);
-		return -1;
-	};
 	return 0;
 }
 
@@ -118,8 +117,11 @@ int32_t testa_ctx_execute_step(struct testa_context_t *ctx,
 	default: return -2; /* error in doubled finding */
 	}
 
+
+	struct testa_step_t *step = ctx->steps[found_idx];
+
 	/* No variables handles early and return */
-	if (!strcmp(ctx->steps[found_idx]->type, "none")) {
+	if (step->cb_none_t) {
 		ctx->steps[found_idx]->cb_none_t(string, userdata);
 		return 0;
 	}
@@ -127,38 +129,26 @@ int32_t testa_ctx_execute_step(struct testa_context_t *ctx,
 	/* find first < in string to get variable value */
 	char *first_gt_symbol = strstr(string, "<");
 	if (!first_gt_symbol) {
-		/* type is not "none", so this is an error */
-		printf("variable callback without <variable> in step\n");
+		printf("variable callback without <variable> in step.\n"
+		       "Ensure step in .features file has a <variable>\n");
 		return -1;
 	}
 
 	int first_gt_len = strlen(first_gt_symbol);
-	if (first_gt_len < 2) {
+	if (first_gt_len < 1) {
 		return -5;
 	}
 	// move past < symbol to number
 	first_gt_symbol = &first_gt_symbol[1];
 
-	const char *target_type = ctx->steps[found_idx]->type;
-	if (!strcmp(target_type, "uint32_t")) {
-		uint32_t value;
-		int32_t err = testa_parse_var(first_gt_symbol, TESTA_TYPE_UINT32_T, &value);
-		if (err) {
-			printf("failed to parse %s\n", first_gt_symbol);
-			return -4;
-		}
-		ctx->steps[found_idx]->cb_uint32_t(string, value, userdata);
-		return 0;
+	int parse_base = 0;
+	if (step->cb_uint32_t) {
+		uint32_t value = strtoul(first_gt_symbol, NULL, parse_base);
+		return step->cb_uint32_t(string, value, userdata);
 	}
-	if (!strcmp(target_type, "int32_t")) {
-		int32_t value;
-		int32_t err = testa_parse_var(first_gt_symbol, TESTA_TYPE_INT32_T, &value);
-		if (err) {
-			printf("failed to parse %s\n", first_gt_symbol);
-			return -4;
-		}
-		ctx->steps[found_idx]->cb_int32_t(string, value, userdata);
-		return 0;
+	if (step->cb_int32_t) {
+		int32_t value = strtol(first_gt_symbol, NULL, parse_base);
+		return step->cb_int32_t(string, value, userdata);
 	}
 
 	printf("no valid handler for %s found, fail\n", string);
@@ -194,24 +184,6 @@ testa_scenario_run_from_file(struct testa_context_t *ctx,
 	fclose(file);
 	return 0;
 }
-
-#define TESTA_LOG_STEP_NONE(str)					\
-	do {								\
-		printf("    %.*s [%s()]\n",				\
-		       (int)strcspn(str, "\n"), str, __func__);		\
-	} while(0)
-
-#define TESTA_LOG_STEP_INT32(str,val)					\
-	do {								\
-		printf("    %.*s [%s(%d)]\n",				\
-		       (int)strcspn(str, "\n"), str, __func__, val);	\
-	} while(0)
-
-#define TESTA_LOG_STEP_UINT32(str,val)					\
-	do {								\
-		printf("    %.*s [%s(%u)]\n",				\
-		       (int)strcspn(str, "\n"), str, __func__, val);	\
-	} while(0)
 
 int32_t
 atm_user_has_valid_card(const char *str, void *userdata)
@@ -263,12 +235,18 @@ atm_insert_card(const char *str, void *userdata)
 
 /* Array of steps here */
 struct testa_step_t atm_steps[] = {
-	{ .find_string = "user has a valid",	.type = "none", .cb_none_t = atm_user_has_valid_card, },
-	{ .find_string = "account balance",	.type = "int32_t",  .cb_int32_t = atm_account_balance, },
-	{ .find_string = "they insert the card",.type = "none", .cb_none_t = atm_insert_card, },
-	{ .find_string = "withdraw",		.type = "uint32_t", .cb_uint32_t = atm_withdraw, },
-	{ .find_string = "the ATM should",	.type = "uint32_t", .cb_uint32_t = atm_dispense_amount, },
-	{ .find_string = "the balance",		.type = "int32_t", .cb_int32_t = atm_resulting_balance, },
+	{ .find_string = "user has a valid",
+	  .cb_none_t = atm_user_has_valid_card, },
+	{ .find_string = "account balance",
+	  .cb_int32_t = atm_account_balance, },
+	{ .find_string = "they insert the card",
+	  .cb_none_t = atm_insert_card, },
+	{ .find_string = "withdraw",
+	  .cb_uint32_t = atm_withdraw, },
+	{ .find_string = "the ATM should",
+	  .cb_uint32_t = atm_dispense_amount, },
+	{ .find_string = "the balance",
+	  .cb_int32_t = atm_resulting_balance, },
 };
 #define num_atm_steps (sizeof(atm_steps) / sizeof(atm_steps[0]))
 
