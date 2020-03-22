@@ -6,4 +6,3 @@ Feature:
     And withdraw <17>
     Then the ATM should return <17>
     And the balance should be <23>
-    And boo should be <17>
