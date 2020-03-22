@@ -13,7 +13,7 @@
 
 
 /* TODO: add more types and string type */
-typedef int32_t (*testa_step_none_t)(void *userdata);
+typedef int32_t (*testa_step_none_t)(const char *string, void *userdata);
 typedef int32_t (*testa_step_int32_t)(int32_t  value, void *userdata);
 typedef int32_t (*testa_step_uint32_t)(uint32_t value, void *userdata);
 
@@ -93,7 +93,7 @@ int32_t testa_ctx_execute_step(struct testa_context_t *ctx,
 		printf("Feature:\n");
 		return 0;
 	}
-	if (!strncmp(string, "Scenario Outline", 16)) {
+	if (!strncmp(string, "  Scenario Outline", 18)) {
 		// Pretty print feature name?
 		printf("  Scenario Outline:\n");
 		return 0;
@@ -120,7 +120,7 @@ int32_t testa_ctx_execute_step(struct testa_context_t *ctx,
 
 	/* No variables handles early and return */
 	if (!strcmp(ctx->steps[found_idx]->type, "none")) {
-		ctx->steps[found_idx]->cb_uint32_t(0, userdata);
+		ctx->steps[found_idx]->cb_none_t(string, userdata);
 		return 0;
 	}
 
@@ -165,54 +165,6 @@ int32_t testa_ctx_execute_step(struct testa_context_t *ctx,
 	return -3;
 }
 
-struct testa_scenario_t {
-	/* Human readable name for this test. This string is not parsed.
-	 *   Scenario: A user withdraws money from an ATM
-	 */
-	const char *name;
-
-	/* Human readable *AND* computer parsable steps. Split each
-	 * instruction with a semicolon character ; to indicate end of line.
-	 * This is the typical Gherkin input steps, below is valid input:
-	 *     Given User has a valid credit card
-	 *     And account balance is 50
-	 *     When they insert the card
-	 *     And withdraws 20
-	 *     Then the ATM should return 20
-	 *     And balance should be 30
-	 */
-	char *steps;
-};
-
-int32_t
-testa_run_scenario(struct testa_context_t *ctx,
-		   const struct testa_scenario_t *scn,
-		   void *userdata)
-{
-	if (!scn->steps) {
-		return -1;
-	}
-	char *steps = strdup(scn->steps);
-	if (!steps)
-		return -2;
-
-	char *save_ptr = NULL;
-	char *token = strtok_r(steps, ";", &save_ptr);
-	uint32_t step_counter = 0;
-
-	while (token) {
-		int32_t err = testa_ctx_execute_step(ctx, token, userdata);
-		if (err) {
-			printf("line %s returns err: %d\n", token, err);
-		}
-		step_counter++;
-		token = strtok_r(NULL, ";", &save_ptr);
-	}
-
-	free(steps);
-	return 0;
-}
-
 int32_t
 testa_scenario_run_from_file(struct testa_context_t *ctx,
 			     const char *path,
@@ -243,12 +195,17 @@ testa_scenario_run_from_file(struct testa_context_t *ctx,
 	return 0;
 }
 
+#define TESTA_LOG_STEP_NONE(str)					\
+	do {								\
+		printf("    %.*s [%s()]\n",				\
+		       (int)strcspn(str, "\n"), str, __func__);		\
+	} while(0)
 
 int32_t
-atm_user_has_valid_card(void *userdata)
+atm_user_has_valid_card(const char *str, void *userdata)
 {
+	TESTA_LOG_STEP_NONE(str);
 	(void)userdata;
-	printf(" - in %s\n", __func__);
 	return 0;
 }
 
@@ -289,10 +246,10 @@ atm_withdraw(uint32_t value, void *userdata)
 }
 
 int32_t
-atm_insert_card(void *userdata)
+atm_insert_card(const char *str, void *userdata)
 {
+	TESTA_LOG_STEP_NONE(str);
 	(void)userdata;
-	printf(" - in %s\n", __func__);
 	return 0;
 }
 
@@ -314,17 +271,6 @@ main(int argc, char **argv)
 	(void)argv;
 
 	struct testa_context_t ctx = {0};
-	static const struct testa_scenario_t scn = {
-		.name = "Scenario Test 1",
-		.steps =
-"Given user has a valid card;\
-And account balance is <50>;\
-When they insert the card;\
-And withdraw <20>;\
-Then the ATM should return <20>;\
-And the balance should be <30>"
-	};
-
 	int32_t err = testa_ctx_register_steps(&ctx, atm_steps, num_atm_steps);
 	if (err) {
 		printf("error %d\n", __LINE__);
@@ -332,10 +278,8 @@ And the balance should be <30>"
 	}
 
 	void *userdata = NULL;
-	err = testa_run_scenario(&ctx, &scn, userdata);
+	err = testa_scenario_run_from_file(&ctx, "atm_dispense.feature",
+					   userdata);
 
-	err = testa_scenario_run_from_file(&ctx, "atm_dispense.feature", userdata);
-
-	printf("running testa: %d\n", err);
 	return err;
 }
