@@ -106,6 +106,23 @@ testa_ctx_example_parsing(struct testa_context_t *ctx,
 	 * executable iterations of each test
 	 */
 	printf("example str: %s", string);
+
+	const char *delim = "|";
+	char *tmp_string = strdup(string);
+	// TODO: _r version
+	char *token = strtok(tmp_string, delim);
+	while(token) {
+		printf("token: %s\n", token);
+		/* TODO: store names of first set of things
+		 * then store next line, execute the values against them
+		 * load next line, execute next line etc
+		 */
+
+		token = strtok(NULL, delim);
+	}
+
+	free(tmp_string);
+
 	return 0;
 }
 
