@@ -68,6 +68,9 @@ struct testa_context_t {
 	uint32_t num_steps;
 	/* Each of the steps gets parsed to an action */
 	struct testa_step_t *steps[32];
+
+	/* scenario runner state */
+	uint32_t in_examples;
 };
 
 int32_t testa_ctx_register_steps(struct testa_context_t *ctx,
@@ -103,8 +106,22 @@ int32_t testa_ctx_execute_step(struct testa_context_t *ctx,
 	if (!strncmp(string, "  Scenario Outline", 18)) {
 		// Pretty print feature name?
 		printf("  Scenario Outline:\n");
+		ctx->in_examples = 0;
 		return 0;
 	}
+	if (!strncmp(string, "    Examples", 12)) {
+		ctx->in_examples = 1;
+		return 0;
+	}
+
+	/* TODO: implement examples! */
+	if (ctx->in_examples)
+		return 0;
+
+	/* empty lines */
+	int len = strlen(string);
+	if (len < 2)
+		return 0;
 
 	for (uint32_t i = 0; i < ctx->num_steps; i++) {
 		/* TODO: implement fuzzy search here? */

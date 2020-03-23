@@ -40,6 +40,15 @@ atm_account_balance(const char *str, int32_t value, void *userdata)
 }
 
 int32_t
+atm_insert_card(const char *str, void *userdata)
+{
+	TESTA_LOG_STEP_NONE(str);
+	struct userdata_t *ud = userdata;
+	ud->atm.card_inserted = 1;
+	return 0;
+}
+
+int32_t
 atm_dispense_amount(const char *str, uint32_t value, void *userdata)
 {
 	TESTA_LOG_STEP_UINT32(str, value);
@@ -51,30 +60,29 @@ atm_dispense_amount(const char *str, uint32_t value, void *userdata)
 }
 
 int32_t
-atm_resulting_balance(const char *str, int32_t value, void *userdata)
-{
-	TESTA_LOG_STEP_INT32(str, value);
-	struct userdata_t *ud = userdata;
-	assert(ud->account.balance == value);
-	return 0;
-}
-
-int32_t
 atm_withdraw(const char *str, uint32_t value, void *userdata)
 {
 	TESTA_LOG_STEP_UINT32(str, value);
 	struct userdata_t *ud = userdata;
 	// call into account code here, making withdrawl of 'value' amount
-	ud->account.balance -= value;
+
+	if (value > 200) // atm won't allow this
+		return 0;
+
+	int tmp_val = (int)value;
+
+	if((ud->account.balance - tmp_val) >= 0)
+		ud->account.balance -= tmp_val;
+
 	return 0;
 }
 
 int32_t
-atm_insert_card(const char *str, void *userdata)
+atm_resulting_balance(const char *str, int32_t value, void *userdata)
 {
-	TESTA_LOG_STEP_NONE(str);
+	TESTA_LOG_STEP_INT32(str, value);
 	struct userdata_t *ud = userdata;
-	ud->atm.card_inserted = 1;
+	assert(ud->account.balance == value);
 	return 0;
 }
 
