@@ -88,18 +88,12 @@ atm_resulting_balance(const char *str, int32_t value, void *userdata)
 
 /* Array of steps here */
 struct testa_step_t atm_steps[] = {
-	{ .find_string = "user has a valid",
-	  .cb_none_t = atm_user_has_valid_card, },
-	{ .find_string = "account balance",
-	  .cb_int32_t = atm_account_balance, },
-	{ .find_string = "they insert the card",
-	  .cb_none_t = atm_insert_card, },
-	{ .find_string = "withdraw",
-	  .cb_uint32_t = atm_withdraw, },
-	{ .find_string = "the ATM should",
-	  .cb_uint32_t = atm_dispense_amount, },
-	{ .find_string = "the balance",
-	  .cb_int32_t = atm_resulting_balance, },
+	{ .find_string = "user has a valid",	.cb_none_t = atm_user_has_valid_card},
+	{ .find_string = "account balance",	.cb_int32_t = atm_account_balance},
+	{ .find_string = "insert the card",	.cb_none_t = atm_insert_card},
+	{ .find_string = "withdraw",		.cb_uint32_t = atm_withdraw},
+	{ .find_string = "the ATM should",	.cb_uint32_t = atm_dispense_amount},
+	{ .find_string = "the balance",		.cb_int32_t = atm_resulting_balance},
 };
 #define num_atm_steps (sizeof(atm_steps) / sizeof(atm_steps[0]))
 
