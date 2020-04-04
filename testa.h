@@ -27,23 +27,36 @@
 #define TESTA_EXAMPLE_VALUES_MAX 32
 #define TESTA_EXAMPLE_VALUES_NAME_MAX 32
 
+#define TESTA_RESET "\033[;0m"
+#define TESTA_RED   "\033[1;31m"
+#define TESTA_GREEN "\033[;32m"
+
 /* Logging macros to pretty-print steps */
 #define TESTA_LOG_STEP_NONE(str)					\
 	do {								\
-		printf("    %.*s [%s()]\n",				\
-		       (int)strcspn(str, "\n"), str, __func__);		\
+		printf("    %s%.*s [%s()]%s\n",				\
+		       TESTA_GREEN, (int)strcspn(str, "\n"), str,	\
+		       __func__, TESTA_RESET);\
 	} while(0)
 
 #define TESTA_LOG_STEP_INT32(str,val)					\
 	do {								\
-		printf("    %.*s [%s(%d)]\n",				\
-		       (int)strcspn(str, "\n"), str, __func__, val);	\
+		printf("    %s%.*s [%s(%d)]%s\n",			\
+		       TESTA_GREEN, (int)strcspn(str, "\n"), str,	\
+		       __func__, val, TESTA_RESET);			\
 	} while(0)
 
 #define TESTA_LOG_STEP_UINT32(str,val)					\
 	do {								\
-		printf("    %.*s [%s(%u)]\n",				\
-		       (int)strcspn(str, "\n"), str, __func__, val);	\
+		printf("    %s%.*s [%s(%u)]%s\n",			\
+		       TESTA_GREEN, (int)strcspn(str, "\n"), str,	\
+		       __func__, val, TESTA_RESET);			\
+	} while(0)
+
+#define TESTA_LOG_STEP_FAILED(str_reason)				\
+	do {								\
+		printf("          %s%s [FAILED] %s%s\n", TESTA_RED,	\
+		       __func__, str_reason, TESTA_RESET);		\
 	} while(0)
 
 /**
@@ -257,6 +270,8 @@ testa_ctx_steps_execute(struct testa_context_t *ctx,
 			uint32_t example_idx,
 			void *userdata)
 {
+	int soft_error_count = 0;
+
 	for(uint16_t i = 0; i < ctx->num_scenario_steps; i++) {
 		uint16_t step_idx = ctx->scenario_steps[i];
 		struct testa_step_t *step = ctx->steps[step_idx];
@@ -273,9 +288,15 @@ testa_ctx_steps_execute(struct testa_context_t *ctx,
 
 		if (step->cb_uint32_t) {
 			int err = step->cb_uint32_t(string, v, userdata);
-			if(err)
-				return -5;
-			continue;
+			if (err == 0)
+				continue;
+			if (err == -1) {
+				soft_error_count++;
+				continue;
+			}
+
+			printf("code error, fix code in test\n");
+			return -5;
 		}
 		if (step->cb_int32_t) {
 			int err = step->cb_int32_t(string, v, userdata);

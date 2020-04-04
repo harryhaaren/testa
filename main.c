@@ -66,8 +66,10 @@ atm_withdraw(const char *str, uint32_t value, void *userdata)
 	struct userdata_t *ud = userdata;
 	// call into account code here, making withdrawl of 'value' amount
 
-	if (value > 200) // atm won't allow this
-		return 0;
+	if (value > 200) { // atm won't allow this
+		TESTA_LOG_STEP_FAILED("Cannot withdraw more than 200");
+		return -1;
+	}
 
 	int tmp_val = (int)value;
 
