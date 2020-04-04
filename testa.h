@@ -86,6 +86,7 @@ struct testa_context_t {
 	uint32_t in_examples;
 	uint32_t in_examples_hdrs_parsed;
 	uint32_t num_example_values;
+	uint32_t num_example_values_rows;
 	struct testa_example_value_t example_values[32];
 
 	/* scenario parsing stores steps and then re-execute them */
@@ -131,11 +132,6 @@ testa_ctx_example_parsing(struct testa_context_t *ctx,
 	}
 	tmp_string[j] = '\0';
 
-	/* Figure out how to cleanly split rows of data into
-	 * executable iterations of each test
-	 */
-	printf("example str: %s\n", tmp_string);
-
 	// TODO: _r version
 	const char *delim = "|";
 	char *token = strtok(tmp_string, delim);
@@ -174,6 +170,10 @@ testa_ctx_example_parsing(struct testa_context_t *ctx,
 
 	free(tmp_string);
 
+	if(ctx->in_examples_hdrs_parsed) {
+		ctx->num_example_values_rows++;
+	}
+
 	/* Note that headers are now parsed, so move to values next */
 	ctx->in_examples_hdrs_parsed = 1;
 
@@ -195,7 +195,7 @@ testa_ctx_steps_parse(struct testa_context_t *ctx,
 	}
 	if (!strncmp(string, "  Scenario Outline", 18)) {
 		// Pretty print feature name?
-		printf("  Scenario Outline:\n");
+		printf("  %s", string);
 		ctx->in_examples = 0;
 		ctx->in_examples_hdrs_parsed = 0;
 		ctx->step_to_ex_value_idx = 0;
@@ -254,6 +254,7 @@ testa_ctx_steps_parse(struct testa_context_t *ctx,
 
 int32_t
 testa_ctx_steps_execute(struct testa_context_t *ctx,
+			uint32_t example_idx,
 			void *userdata)
 {
 	for(uint16_t i = 0; i < ctx->num_scenario_steps; i++) {
@@ -267,44 +268,17 @@ testa_ctx_steps_execute(struct testa_context_t *ctx,
 			continue;
 		}
 
-		/* find first < in string to get variable value */
-		char *first_gt_symbol = strstr(string, "<");
-		if (!first_gt_symbol) {
-			printf("variable callback without <variable> in step.\n"
-			       "Ensure step in .features file has a <variable>\n");
-			return -1;
-		}
+		int64_t exv_idx = ctx->steps[step_idx]->example_value_idx;
+		int64_t v = (int64_t)ctx->example_values[exv_idx].values[example_idx];
 
-		int first_gt_len = strlen(first_gt_symbol);
-		if (first_gt_len < 1) {
-			return -5;
-		}
-		// move past < symbol to number
-		first_gt_symbol = &first_gt_symbol[1];
-		char *iter = strtok(first_gt_symbol, ">");
-		int iter_len = strlen(iter);
-		int is_digit = 1;
-		for (int i = 0; i < iter_len; i++) {
-			if(isspace(iter[i])) {
-				printf("no whitespace allowed inside <>\n");
-				exit(-1);
-			}
-			if(!isdigit(iter[i])) {
-				is_digit = 0;
-			}
-		}
-
-		int parse_base = 0;
 		if (step->cb_uint32_t) {
-			uint32_t value = strtoul(first_gt_symbol, NULL, parse_base);
-			int err = step->cb_uint32_t(string, value, userdata);
+			int err = step->cb_uint32_t(string, v, userdata);
 			if(err)
 				return -5;
 			continue;
 		}
 		if (step->cb_int32_t) {
-			int32_t value = strtol(first_gt_symbol, NULL, parse_base);
-			int err = step->cb_int32_t(string, value, userdata);
+			int err = step->cb_int32_t(string, v, userdata);
 			if(err)
 				return -5;
 			continue;
@@ -312,6 +286,17 @@ testa_ctx_steps_execute(struct testa_context_t *ctx,
 	}
 
 	return 0;
+}
+
+int32_t
+testa_ctx_steps_execute_all(struct testa_context_t *ctx, void *userdata)
+{
+	int ret = 0;
+	for (uint32_t i = 0; i < ctx->num_example_values_rows; i++) {
+		printf("      Example %d\n", i);
+		ret += testa_ctx_steps_execute(ctx, i, userdata);
+	}
+	return ret;
 }
 
 int32_t
@@ -344,11 +329,10 @@ testa_scenario_run_from_file(struct testa_context_t *ctx,
 		}
 		step_counter++;
 	}
-
-	printf("steps parsed, %d steps\n", step_counter);
+	//printf("steps parsed, %d steps\n", step_counter);
 
 	/* TODO: now execute the steps with the parsed examples */
-	int32_t err = testa_ctx_steps_execute(ctx, userdata);
+	int32_t err = testa_ctx_steps_execute_all(ctx, userdata);
 	if(err)
 		printf("error executing steps\n");
 
