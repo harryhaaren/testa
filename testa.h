@@ -29,6 +29,7 @@
 
 #define TESTA_RESET "\033[;0m"
 #define TESTA_RED   "\033[1;31m"
+#define TESTA_BLUE  "\033[0;34m"
 #define TESTA_GREEN "\033[;32m"
 
 /* Logging macros to pretty-print steps */
@@ -53,9 +54,15 @@
 		       __func__, val, TESTA_RESET);			\
 	} while(0)
 
-#define TESTA_LOG_STEP_FAILED(str_reason)				\
+#define TESTA_LOG_STEP_WARN(str_reason)				\
 	do {								\
-		printf("          %s%s [FAILED] %s%s\n", TESTA_RED,	\
+		printf("          %s%s() [WARN] %s%s\n", TESTA_BLUE,	\
+		       __func__, str_reason, TESTA_RESET);		\
+	} while(0)
+
+#define TESTA_LOG_STEP_FAIL(str_reason)				\
+	do {								\
+		printf("          %s%s() [FAIL] %s%s\n", TESTA_RED,	\
 		       __func__, str_reason, TESTA_RESET);		\
 	} while(0)
 
