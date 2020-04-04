@@ -35,23 +35,23 @@
 /* Logging macros to pretty-print steps */
 #define TESTA_LOG_STEP_NONE(str)					\
 	do {								\
-		printf("    %s%.*s [%s()]%s\n",				\
+		printf("    %s%.*s%s\n",				\
 		       TESTA_GREEN, (int)strcspn(str, "\n"), str,	\
-		       __func__, TESTA_RESET);\
+		       TESTA_RESET);\
 	} while(0)
 
 #define TESTA_LOG_STEP_INT32(str,val)					\
 	do {								\
-		printf("    %s%.*s [%s(%d)]%s\n",			\
+		printf("    %s%.*s:%s %d\n",			\
 		       TESTA_GREEN, (int)strcspn(str, "\n"), str,	\
-		       __func__, val, TESTA_RESET);			\
+		       TESTA_RESET, val);				\
 	} while(0)
 
 #define TESTA_LOG_STEP_UINT32(str,val)					\
 	do {								\
-		printf("    %s%.*s [%s(%u)]%s\n",			\
+		printf("    %s%.*s:%s %u\n",			\
 		       TESTA_GREEN, (int)strcspn(str, "\n"), str,	\
-		       __func__, val, TESTA_RESET);			\
+		       TESTA_RESET, val);				\
 	} while(0)
 
 #define TESTA_LOG_STEP_WARN(str_reason)				\
@@ -210,7 +210,7 @@ testa_ctx_steps_parse(struct testa_context_t *ctx,
 
 	if (!strncmp(string, "Feature", 7)) {
 		// Pretty print feature name?
-		printf("Feature:\n");
+		printf("%s", string);
 		return 0;
 	}
 	if (!strncmp(string, "  Scenario Outline", 18)) {
@@ -219,6 +219,7 @@ testa_ctx_steps_parse(struct testa_context_t *ctx,
 		ctx->in_examples = 0;
 		ctx->in_examples_hdrs_parsed = 0;
 		ctx->step_to_ex_value_idx = 0;
+		ctx->num_example_values_rows = 0;
 		return 0;
 	}
 	if (!strncmp(string, "    Examples", 12)) {

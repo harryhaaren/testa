@@ -5,6 +5,8 @@
 struct userdata_t {
 	uint16_t one;
 	uint16_t two;
+	uint16_t result;
+	uint16_t result_u8s;
 };
 
 int32_t
@@ -30,7 +32,16 @@ add_do(const char *str, void *userdata)
 {
 	TESTA_LOG_STEP_NONE(str);
 	struct userdata_t *ud = userdata;
-	(void)ud;
+	ud->result = ud->one + ud->two;
+
+	/* u8 style adds */
+	uint16_t tmp1_lo = (ud->one & UINT8_MAX);
+	uint16_t tmp2_lo = (ud->two & UINT8_MAX);
+	uint16_t tmp1_hi = (ud->one >> 8) & UINT8_MAX;
+	uint16_t tmp2_hi = (ud->two >> 8) & UINT8_MAX;
+	uint16_t res = ((tmp1_hi + tmp2_hi) << 8) + (tmp1_lo + tmp2_lo);
+	ud->result_u8s = res;
+
 	return 0;
 }
 
@@ -40,16 +51,8 @@ add_result_equals(const char *str, int32_t value, void *userdata)
 	TESTA_LOG_STEP_INT32(str, value);
 	struct userdata_t *ud = userdata;
 
-	assert((ud->one + ud->two) == value);
-
-	uint16_t tmp1_lo = (ud->one & UINT8_MAX);
-	uint16_t tmp2_lo = (ud->two & UINT8_MAX);
-
-	uint16_t tmp1_hi = (ud->one >> 8) & UINT8_MAX;
-	uint16_t tmp2_hi = (ud->two >> 8) & UINT8_MAX;
-
-	uint16_t res = ((tmp1_hi + tmp2_hi) << 8) + (tmp1_lo + tmp2_lo);
-	assert(res == value);
+	assert(ud->result == value);
+	assert(ud->result_u8s == value);
 
 	return 0;
 }
