@@ -10,6 +10,7 @@ Feature:
     Examples:
       | balance_start | withdraw | dispense | balance_end |
       |     50        |    20    |    20    |     30      |
+      |     70        |    20    |    20    |     50      |
 
   Scenario Outline:
     Given user has a valid card;
