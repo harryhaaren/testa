@@ -1,21 +1,15 @@
 Feature:
-  Scenario Outline:
+  Scenario Outline: Test 1
     Given user has a valid card;
-    And account balance is <40>;
+    And account balance is <balance_start>;
     When they insert the card;
-    And withdraw <17>;
-    Then the ATM should return <17>;
-    And the balance should be <23>
+    And withdraw <withdraw>;
+    Then the ATM should return <dispense>;
+    And the balance should be <balance_end>
 
     Examples:
       | balance_start | withdraw | dispense | balance_end |
       |     50        |    20    |    20    |     30      |
       |     70        |    20    |    20    |     50      |
 
-  Scenario Outline:
-    Given user has a valid card;
-    And account balance is <-7>;
-    When they insert the card;
-    And withdraw <20>;
-    Then the ATM should return <0>;
-    And the balance should be <-7>
+

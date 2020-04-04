@@ -59,6 +59,8 @@ struct testa_step_t {
 	/* Match against this string to find its impl callback */
 	char find_string[64];
 
+	uint32_t example_value_idx;
+
 	/* Callback function prototypes. Only one must be set, and that
 	 * string provided will be parsed to give a variable of that type.
 	 */
@@ -76,6 +78,7 @@ struct testa_example_value_t {
 /* Defines a test */
 struct testa_context_t {
 	uint32_t num_steps;
+	uint32_t step_to_ex_value_idx;
 	/* Each of the steps gets parsed to an action */
 	struct testa_step_t *steps[32];
 
@@ -195,6 +198,7 @@ testa_ctx_steps_parse(struct testa_context_t *ctx,
 		printf("  Scenario Outline:\n");
 		ctx->in_examples = 0;
 		ctx->in_examples_hdrs_parsed = 0;
+		ctx->step_to_ex_value_idx = 0;
 		return 0;
 	}
 	if (!strncmp(string, "    Examples", 12)) {
@@ -233,6 +237,14 @@ testa_ctx_steps_parse(struct testa_context_t *ctx,
 	default: return -2; /* error in doubled finding */
 	}
 
+	/* If the string has a < char, it must be using a value, so
+	 * consume one of the values from the examples table */
+	char *consumes_value = strstr(string, "<");
+	if (consumes_value) {
+		ctx->steps[found_idx]->example_value_idx =
+			ctx->step_to_ex_value_idx++;
+	}
+
 	/* Append this step to the runtime list */
 	ctx->scenario_steps[ctx->num_scenario_steps] = found_idx;
 	ctx->scenario_step_strings[ctx->num_scenario_steps] = strdup(string);
@@ -269,6 +281,18 @@ testa_ctx_steps_execute(struct testa_context_t *ctx,
 		}
 		// move past < symbol to number
 		first_gt_symbol = &first_gt_symbol[1];
+		char *iter = strtok(first_gt_symbol, ">");
+		int iter_len = strlen(iter);
+		int is_digit = 1;
+		for (int i = 0; i < iter_len; i++) {
+			if(isspace(iter[i])) {
+				printf("no whitespace allowed inside <>\n");
+				exit(-1);
+			}
+			if(!isdigit(iter[i])) {
+				is_digit = 0;
+			}
+		}
 
 		int parse_base = 0;
 		if (step->cb_uint32_t) {
